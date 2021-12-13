@@ -574,12 +574,12 @@ void test19(void)
 	buffer = buffer_init(10);
 	msg_t* expected = msg_init(EXPECTED_MSG);
 	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
+	sleep(1);
 	log_it(outfile,19,1);
 	int num = 6;
 	sleep(1);
 	for(int i = 0; i < num ; i++)
 	{
-		sleep(1);
 		if(i%2==0)
 		{
 			pthread_t a;
@@ -592,6 +592,7 @@ void test19(void)
 			pthread_create(&a,NULL,producer,NULL);
 			pthread_join(a,NULL);	
 		}
+		sleep(1);
 		log_it(outfile,19,i+2);	
 		
 	}
@@ -629,6 +630,7 @@ void test21(void)
 {
 	int num = 4;
 	buffer = buffer_init(num);
+	log_it(outfile,21,1);
 	for(int i = 0; i < num ; i++)
 	{
 		if(i%2==0)
@@ -648,6 +650,7 @@ void test21(void)
 	CU_ASSERT_NOT_EQUAL(NULL,buffer->message_arr[1].content);
 	CU_ASSERT_NOT_EQUAL(NULL,buffer->message_arr[2].content);
 	CU_ASSERT_NOT_EQUAL(NULL,buffer->message_arr[3].content);
+	log_it(outfile,21,2);
 	buffer_destroy(buffer);
 }
 
@@ -662,6 +665,7 @@ void test22(void)
 	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
 	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
 	CU_ASSERT_EQUAL(EXPECTED_MSG,buffer->message_arr[num-1].content);
+	log_it(outfile,22,1);
 	CU_ASSERT_EQUAL(num,buffer->cont);
 	for(int i = 0; i < num ; i++)
 	{
@@ -676,25 +680,36 @@ void test22(void)
 			pthread_create(&a,NULL,consumerb,NULL);
 		}
 		sleep(2);
+		log_it(outfile,22,i+2);
 		CU_ASSERT_EQUAL(num-i-1,buffer->cont);	
 	}
 	CU_ASSERT_EQUAL(0,buffer->cont);
+	log_it(outfile,22,num+2);
 	buffer_destroy(buffer);
 }
 
 void test23(void)
 {
 	buffer = buffer_init(1);
-	msg_t* expected = msg_init(EXPECTED_MSG);
-	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
-	int num = rand()%10+1;
-	for(int i = 0; i < num ; i++)
-	{
-		pthread_t a;
-		pthread_create(&a,NULL,producer,NULL);
-		pthread_join(a,NULL);
-	}
-	CU_ASSERT_EQUAL(EXPECTED_MSG,buffer->message_arr[0].content);
+	pthread_t a,b,c,d;
+	pthread_create(&a,NULL,producerb,NULL);
+	sleep(1);
+	log_it(outfile,23,1);
+	CU_ASSERT_EQUAL(1,buffer->cont);
+	pthread_create(&b,NULL,consumerb,NULL);
+	sleep(1);
+	log_it(outfile,23,2);
+	CU_ASSERT_EQUAL(0,buffer->cont);	
+	sleep(1);
+	log_it(outfile,23,4);
+	pthread_create(&c,NULL,producer,NULL);
+	sleep(1);
+	log_it(outfile,23,5);
+	CU_ASSERT_EQUAL(1,buffer->cont);
+	pthread_create(&d,NULL,consumer,NULL);
+	sleep(1);
+	log_it(outfile,23,6);
+	CU_ASSERT_EQUAL(0,buffer->cont);
 	buffer_destroy(buffer);
 }
 
@@ -702,30 +717,56 @@ void test24(void)
 {
 	buffer = buffer_init(1);
 	msg_t* expected = msg_init(EXPECTED_MSG);
-	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
-	int num = rand()%10+1;
-	for(int i = 0; i < num ; i++)
-	{
-		pthread_t a;
-		pthread_create(&a,NULL,producer,NULL);
-		pthread_join(a,NULL);
-	}
-	CU_ASSERT_EQUAL(EXPECTED_MSG,buffer->message_arr[0].content);
+	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_bloccante(buffer,expected));
+	CU_ASSERT_EQUAL(1,buffer->cont);
+	log_it(outfile,24,1);	
+	CU_ASSERT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
+	CU_ASSERT_EQUAL(1,buffer->cont);
+	log_it(outfile,24,2);	
+	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,get_bloccante(buffer));
+	CU_ASSERT_EQUAL(0,buffer->cont);
+	log_it(outfile,24,3);
+	CU_ASSERT_EQUAL(BUFFER_ERROR,get_non_bloccante(buffer));
+	CU_ASSERT_EQUAL(0,buffer->cont);
+	log_it(outfile,24,4);
 	buffer_destroy(buffer);
 }
 
 void test25(void)
 {
-	buffer = buffer_init(1);
-	msg_t* expected = msg_init(EXPECTED_MSG);
-	CU_ASSERT_NOT_EQUAL(BUFFER_ERROR,put_non_bloccante(buffer,expected));
-	int num = rand()%10+1;
-	for(int i = 0; i < num ; i++)
+	buffer = buffer_init(5);
+	for(int i = 0; i < 3 ; i++)
 	{
 		pthread_t a;
-		pthread_create(&a,NULL,producer,NULL);
-		pthread_join(a,NULL);
+		pthread_create(&a,NULL,producerb,NULL);	
+		sleep(1);	
+		log_it(outfile,25,i+1);
 	}
-	CU_ASSERT_EQUAL(EXPECTED_MSG,buffer->message_arr[0].content);
+	CU_ASSERT_EQUAL(3,buffer->cont);
+	for(int i = 0; i < 2 ; i++)
+	{
+		pthread_t a;
+		pthread_create(&a,NULL,consumerb,NULL);	
+		sleep(1);	
+		log_it(outfile,25,i+4);
+	}
+	CU_ASSERT_EQUAL(1,buffer->cont);	
+	for(int i = 0; i < 5 ; i++)
+	{
+		pthread_t a;
+		pthread_create(&a,NULL,producer,NULL);	
+		sleep(1);	
+		log_it(outfile,25,i+6);
+	}	
+	CU_ASSERT_EQUAL(5,buffer->cont);		
+	for(int i = 0; i < 5 ; i++)
+	{
+		pthread_t a;
+		pthread_create(&a,NULL,consumer,NULL);	
+		sleep(1);	
+		log_it(outfile,25,i+11);
+	}	
+	CU_ASSERT_EQUAL(0,buffer->cont);
+	CU_ASSERT_EQUAL(BUFFER_ERROR,get_non_bloccante(buffer));
 	buffer_destroy(buffer);
 }
